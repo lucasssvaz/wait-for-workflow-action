@@ -1,55 +1,56 @@
-name: 'Wait for Workflow Action'
+name: "Wait on Workflow"
 branding:
-  icon: 'clock'
-  color: 'blue'
-description: 'Waits for a specified workflow to complete before proceeding'
+  icon: "clock"
+  color: "green"
+description: "Waits on a specified workflow to complete before proceeding"
 inputs:
-  GITHUB_TOKEN:
-    description: 'GitHub token to access the repository'
+  github-token:
+    description: "GitHub token to access the repository"
+    default: "${{ github.token }}"
+  workflow:
+    description: "Run ID or file name of the workflow to wait on"
     required: true
-  workflow_id:
-    description: 'ID of the workflow to wait for'
-    required: false
-  run_id:
-    description: 'If provided will wait for workflow run with specified id'
-    required: false
-  max_wait_minutes:
-    description: 'Maximum time script will wait to workflow run to be found in minutes'
-    required: false
-    default: '5'
+  max-wait:
+    description: "Maximum time the script will wait on the workflow run to be found (minutes)"
+    default: 5
   interval:
-    description: 'Interval in seconds which will be used for GitHub API calls'
-    required: false
-    default: '10'
+    description: "Interval between checking workflow status (seconds)"
+    default: 10
   timeout:
-    description: 'Maximum time script will wait to workflow run to be finished'
-    required: false
-    default: '30'
-  org_name:
-    description: 'GitHub organization name'
-    required: true
-  repo_name:
-    description: 'GitHub repository name'
-    required: true
-  ref:
-    description: 'Branch reference (if empty, ref selected for trigger would be taken)'
-    required: false
-    default: ''
+    description: "Maximum time the script will wait on the workflow run to be finished (minutes)"
+    default: 30
+  repository:
+    description: "Repository name with owner where the workflow is running"
+    default: "${{ github.repository }}"
+  sha:
+    description: "Head commit reference to watch for the workflow run"
+    default: "${{ github.sha }}"
+  verbose:
+    description: "Enable verbose output"
+    default: false
+outputs:
+  run-id:
+    description: "ID of the workflow run"
+    value: ${{ steps.wait-on-workflow.outputs.run-id }}
+  conclusion:
+    description: "Conclusion of the workflow run. Can be one of the `success`, `failure`, `neutral`, `cancelled`, `skipped`, `timed_out`, or `action_required`"
+    value: ${{ steps.wait-on-workflow.outputs.conclusion }}
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Set execute permissions for script
-      run: chmod +x ${{ github.action_path }}/scripts/wait-for-workflow.sh
+      run: chmod +x ${{ github.action_path }}/scripts/wait-on-workflow.sh
       shell: bash
-    - run: ${{ github.action_path }}/scripts/wait-for-workflow.sh
+    - id: wait-on-workflow
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ inputs.GITHUB_TOKEN }}
-        WORKFLOW_ID: ${{ inputs.workflow_id }}
-        RUN_ID: ${{ inputs.run_id }}
-        MAX_WAIT_MINUTES: ${{ inputs.max_wait_minutes }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        WORKFLOW: ${{ inputs.workflow }}
+        MAX_WAIT: ${{ inputs.max-wait }}
         INTERVAL: ${{ inputs.interval }}
         TIMEOUT: ${{ inputs.timeout }}
-        ORG_NAME: ${{ inputs.org_name }}
-        REPO_NAME: ${{ inputs.repo_name }}
-        REF: ${{ inputs.ref || github.ref }}
+        REPOSITORY: ${{ inputs.repository }}
+        SHA: ${{ inputs.sha }}
+        VERBOSE: ${{ inputs.verbose }}
+      run: |
+        ${{ github.action_path }}/scripts/wait-on-workflow.sh

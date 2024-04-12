@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Run a basic shell script
         run: |
           echo "Starting triggered workflow..."
-          sleep 180
+          sleep 120
           echo "Triggered workflow completed successfully!"

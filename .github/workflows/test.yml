@@ -1,4 +1,4 @@
-name: Test WaitForWorkflow
+name: Test Wait on Workflow
 
 on:
   push:
@@ -6,38 +6,57 @@ on:
       - main
   workflow_dispatch:
     inputs:
+      sha:
+        description: 'commit'
+        required: false
+        default: ''
       ref:
         description: 'branch'
         required: false
         default: ''
-      run_id:
-        description: 'run_id for test'
+      run-id:
+        description: 'run-id for test'
         required: false
         default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test_workflow_dispatch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Trigger another workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: to_be_triggered.yml
-          token: ${{ secrets.REPOSITORY_DISPATCH_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: "${{ inputs.ref || github.ref }}"
 
-      - name: Wait for the triggered workflow to complete
+      - name: Wait on the triggered workflow to complete
+        id: wait-on-workflow
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: ${{ inputs.run-id || 'to_be_triggered.yml' }}
+          max-wait: 2
+          interval: 10
+          timeout: 5
+          repository: ${{ github.repository }}
+          sha: "${{ inputs.sha || github.sha }}"
+          verbose: true
+
+      - name: Print the workflow run ID and conclusion
         run: |
-          chmod +x scripts/wait-for-workflow.sh
-          export GITHUB_TOKEN="${{ secrets.REPOSITORY_DISPATCH_TOKEN }}"
-          export WORKFLOW_ID="to_be_triggered.yml"
-          export RUN_ID="${{ inputs.run_id }}"
-          export MAX_WAIT_MINUTES="2"
-          export INTERVAL="5"
-          export TIMEOUT="5"
-          export ORG_NAME="kamilchodola"
-          export REPO_NAME="wait-for-workflow-action"
-          export REF="${{ inputs.ref || github.ref }}"
-          ./scripts/wait-for-workflow.sh
+          run_id=$(echo "${{ steps.wait-on-workflow.outputs.run-id }}")
+          conclusion=$(echo "${{ steps.wait-on-workflow.outputs.conclusion }}")
+          echo "Run ID: $run_id"
+          echo "Conclusion: $conclusion"
+          if [ -z "$run_id" ] || [ -z "$conclusion" ]; then
+            echo "Failed to get workflow run ID and/or conclusion";
+            exit 1;
+          fi
