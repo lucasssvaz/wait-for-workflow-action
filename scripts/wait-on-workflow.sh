@@ -56,8 +56,8 @@ if [ -z "$run_id" ]; then
     fi
 
     run_id=$(echo "$response" | \
-      jq -r --arg sha "$SHA" '.workflow_runs[] | select(.head_sha == $sha) | .id')
-    if [ -n "$run_id" ]; then
+      jq -r --arg sha "$SHA" '[.workflow_runs | sort_by(.created_at)[] | select(.head_sha == $sha)] | last | .id')
+    if [ -n "$run_id" ] && [ $run_id != "null" ]; then
       echo "🎉 Workflow triggered! Run ID: $run_id"
       break
     fi
